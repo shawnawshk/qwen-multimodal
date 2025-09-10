@@ -10,7 +10,7 @@ from typing import List, Dict, Any
 
 # Configure Streamlit page
 st.set_page_config(
-    page_title="Qwen2.5-VL Model Tester",
+    page_title="Qwen2.5-VL Model Demo",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -85,7 +85,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # App title and description
-st.title("🤖 Qwen2.5-VL Model Tester")
+st.title("🤖 Qwen2.5-VL Model Demo")
 st.markdown("Test your deployed Qwen2.5-VL model with images, videos, and text conversations")
 
 # Sidebar configuration
@@ -112,16 +112,6 @@ def encode_image_to_base64(image_file) -> str:
         image.save(buffered, format="JPEG")
         img_str = base64.b64encode(buffered.getvalue()).decode()
         return f"data:image/jpeg;base64,{img_str}"
-    return None
-
-def encode_video_to_base64(video_file) -> str:
-    """Convert uploaded video to base64 string"""
-    if video_file is not None:
-        video_bytes = video_file.read()
-        video_str = base64.b64encode(video_bytes).decode()
-        # Reset file pointer for potential reuse
-        video_file.seek(0)
-        return f"data:video/mp4;base64,{video_str}"
     return None
 
 def call_vllm_api(messages: List[Dict], model_endpoint: str, **kwargs) -> str:
@@ -154,7 +144,7 @@ def call_vllm_api(messages: List[Dict], model_endpoint: str, **kwargs) -> str:
         return f"Unexpected error: {str(e)}"
 
 # Main interface tabs
-tab1, tab2, tab3, tab4 = st.tabs(["📷 Single Image", "🖼️ Multiple Images", "🎥 Video Analysis", "💬 Text Chat"])
+tab1, tab2, tab3 = st.tabs(["📷 Single Image", "🖼️ Multiple Images", "💬 Text Chat"])
 
 # Tab 1: Single Image Analysis
 with tab1:
@@ -332,159 +322,8 @@ with tab2:
         else:
             st.info("🔍 Upload images and click 'Analyze Images' to see the AI response here.")
 
-# Tab 3: Video Analysis
+# Tab 3: Text Chat
 with tab3:
-    st.header("Video Analysis")
-    st.warning("⚠️ Video analysis is currently limited. While video upload is enabled in your deployment, the vLLM OpenAI-compatible API doesn't fully support video content processing yet.")
-    
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.subheader("Upload Video")
-        uploaded_video = st.file_uploader(
-            "Choose a video...", 
-            type=['mp4', 'avi', 'mov', 'webm'],
-            key="video_file",
-            help="Supported formats: MP4, AVI, MOV, WebM"
-        )
-        
-        if uploaded_video:
-            st.video(uploaded_video)
-            
-            # Show video info
-            file_size = len(uploaded_video.getvalue()) / (1024 * 1024)  # Size in MB
-            st.caption(f"📁 File: {uploaded_video.name} ({file_size:.1f} MB)")
-        
-        st.subheader("Your Question")
-        video_question = st.text_area(
-            "What would you like to know about this video?",
-            value="Describe what happens in this video in detail.",
-            height=100,
-            key="video_question",
-            help="Try asking about: actions, objects, scenes, timeline, emotions, etc."
-        )
-        
-        # Video analysis options
-        with st.expander("🔧 Frame Extraction (Workaround)"):
-            st.markdown("**Since video processing isn't fully supported, try extracting frames:**")
-            
-            if uploaded_video:
-                st.info("💡 **Suggested Workaround**: Extract frames from your video and use the 'Multiple Images' tab for analysis.")
-                
-                # Show extraction command
-                video_name = uploaded_video.name.rsplit('.', 1)[0]
-                st.code(f"""
-# Extract 1 frame per second
-ffmpeg -i "{uploaded_video.name}" -vf fps=1 {video_name}_frame_%03d.jpg
-
-# Extract 5 key frames
-ffmpeg -i "{uploaded_video.name}" -vf "select=not(mod(n\\,30))" -vsync vfr {video_name}_frame_%03d.jpg
-                """, language="bash")
-                
-                st.markdown("Then upload the extracted frames to the **'Multiple Images'** tab for analysis.")
-            else:
-                st.markdown("Upload a video to see frame extraction commands.")
-        
-        if st.button("🚀 Try Video Analysis (Limited)", key="analyze_video"):
-            if uploaded_video and video_question:
-                with st.spinner("Attempting video analysis..."):
-                    try:
-                        # Since we know video processing doesn't work properly,
-                        # provide a helpful response with video metadata
-                        file_size = len(uploaded_video.getvalue()) / (1024 * 1024)
-                        
-                        messages = [
-                            {
-                                "role": "user",
-                                "content": f"""I have a video file with the following details:
-- Filename: {uploaded_video.name}
-- Size: {file_size:.1f} MB
-- Question: {video_question}
-
-Since you cannot directly process video content through this interface, please provide:
-1. General guidance on what to look for in a video when answering: "{video_question}"
-2. Suggestions for extracting and analyzing video content
-3. What specific frames or moments might be most relevant
-4. Alternative approaches for video analysis"""
-                            }
-                        ]
-                        
-                        response = call_vllm_api(
-                            messages, 
-                            model_endpoint,
-                            max_tokens=max_tokens,
-                            temperature=temperature,
-                            top_p=top_p
-                        )
-                        
-                        st.session_state.video_response = f"""⚠️ **Video Content Analysis Not Available**
-
-The model cannot directly view your video content through vLLM's OpenAI-compatible API. However, here's helpful guidance:
-
-{response}
-
----
-💡 **Recommended Workaround**: Extract key frames from your video and upload them to the 'Multiple Images' tab for visual analysis."""
-                        
-                    except Exception as e:
-                        st.error(f"Error: {str(e)}")
-                        st.session_state.video_response = f"""❌ **Analysis Failed**
-
-Unable to process video analysis request. 
-
-**Suggested alternatives:**
-1. Extract frames using FFmpeg: `ffmpeg -i "{uploaded_video.name}" -vf fps=0.5 frame_%03d.jpg`
-2. Upload extracted frames to the 'Multiple Images' tab
-3. Use the native Qwen2.5-VL API directly (not through vLLM)
-
-**Technical details:** vLLM's OpenAI-compatible API doesn't fully support video processing for Qwen2.5-VL yet."""
-            else:
-                st.warning("Please upload a video and enter a question.")
-    
-    with col2:
-        st.subheader("Model Response")
-        if hasattr(st.session_state, 'video_response'):
-            st.markdown("**🤖 AI Response:**")
-            # Create a nice response display
-            response_container = st.container()
-            with response_container:
-                st.text_area(
-                    label="AI Response",
-                    value=st.session_state.video_response,
-                    height=350,
-                    disabled=False,
-                    label_visibility="collapsed",
-                    key="video_response_display"
-                )
-                # Add copy button
-                if st.button("📋 Copy Response", key="copy_video"):
-                    st.success("Response copied to clipboard! (Use Ctrl+A, Ctrl+C in the text area above)")
-        else:
-            st.info("🎥 Upload a video and click 'Analyze Video' to see the AI response here.")
-            
-            # Add some helpful tips
-            with st.expander("💡 Current Video Limitations & Workarounds"):
-                st.markdown("""
-                **Current Status:**
-                - ✅ Video upload is enabled in your deployment
-                - ❌ vLLM's OpenAI API doesn't process video content yet
-                - 🔄 The model receives metadata but can't "see" the video
-                
-                **Workarounds:**
-                1. **Extract frames**: Use tools like FFmpeg to extract key frames as images
-                2. **Use image analysis**: Upload individual frames to the "Single Image" or "Multiple Images" tabs
-                3. **Direct API**: Use the native Qwen2.5-VL API instead of vLLM's OpenAI wrapper
-                
-                **Alternative approach:**
-                ```bash
-                # Extract frames from video
-                ffmpeg -i your_video.mp4 -vf fps=1 frame_%03d.jpg
-                ```
-                Then upload the extracted frames to the image analysis tabs.
-                """)
-
-# Tab 4: Text Chat
-with tab4:
     st.header("Text-Only Chat")
     
     # Initialize chat history
