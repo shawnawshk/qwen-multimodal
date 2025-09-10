@@ -19,7 +19,7 @@ Vision-language model for image/video analysis with multi-modal conversations an
 ## Repository Structure
 
 ```text
-├── qwen-image/           # Image generation service
+├── qwen-image/          # Image generation service
 │   ├── backend/         # FastAPI service
 │   ├── streamlit-frontend/  # Web UI
 │   ├── k8s-manifests/   # Kubernetes configs

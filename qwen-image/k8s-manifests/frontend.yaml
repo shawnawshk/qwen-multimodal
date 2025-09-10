@@ -1,17 +1,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: streamlit-frontend
+  name: qwen-image-frontend
   labels:
-    app: streamlit-frontend
+    app: qwen-image-frontend
 spec:
   selector:
     matchLabels:
-      app: streamlit-frontend
+      app: qwen-image-frontend
   template:
     metadata:
       labels:
-        app: streamlit-frontend
+        app: qwen-image-frontend
     spec:
       affinity:
         nodeAffinity:
@@ -55,10 +55,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: streamlit-frontend-service
+  name: qwen-image-frontend-service
 spec:
   selector:
-    app: streamlit-frontend
+    app: qwen-image-frontend
   ports:
     - port: 80
       targetPort: http
